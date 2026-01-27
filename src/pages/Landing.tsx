@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Car, Shield, GraduationCap, ArrowRight } from 'lucide-react';
@@ -29,6 +30,7 @@ const levels: { id: Level; title: string; description: string; icon: React.Eleme
 const Landing = () => {
   const navigate = useNavigate();
   const { name, setName, level, setLevel } = useUser();
+  const [password, setPassword] = useState('');
 
   const handleStart = () => {
     if (name.trim()) {
@@ -51,10 +53,10 @@ const Landing = () => {
           >
             <Car className="w-10 h-10 text-white" />
           </motion.div>
-          <h1 className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
+          <h1 className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400 py-2">
             Ashaan Smart Driving Coach
           </h1>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+          <p className="text-xl text-gray-400 max-w-2xl mx-auto mt-4">
             Your personal AI-powered driving instructor. Learn road rules, practice scenarios, and master safe driving from home.
           </p>
         </div>
@@ -67,6 +69,17 @@ const Landing = () => {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Enter your name"
+              className="w-full bg-gray-900 border border-gray-700 rounded-xl px-6 py-4 text-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-gray-600"
+            />
+          </div>
+
+          <div className="space-y-4">
+            <label className="block text-sm font-medium text-gray-400 ml-1">Create a password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Create a password"
               className="w-full bg-gray-900 border border-gray-700 rounded-xl px-6 py-4 text-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-gray-600"
             />
           </div>
@@ -98,14 +111,26 @@ const Landing = () => {
                         <Icon className={clsx("w-6 h-6", isSelected ? "text-white" : "text-gray-400")} />
                       </div>
                       <div>
-                        <h3 className={clsx("font-semibold text-lg", isSelected ? "text-white" : "text-gray-200")}>
+                        <h3 className={clsx(
+                          "font-semibold text-lg mb-1",
+                          isSelected ? "text-white" : "text-gray-200"
+                        )}>
                           {l.title}
                         </h3>
-                        <p className={clsx("text-sm mt-1 leading-relaxed", isSelected ? "text-blue-100" : "text-gray-500")}>
+                        <p className={clsx(
+                          "text-sm leading-relaxed",
+                          isSelected ? "text-blue-100" : "text-gray-400"
+                        )}>
                           {l.description}
                         </p>
                       </div>
                     </div>
+                    {isSelected && (
+                      <motion.div
+                        layoutId="selection-glow"
+                        className="absolute inset-0 bg-gradient-to-tr from-blue-600/20 to-transparent"
+                      />
+                    )}
                   </motion.button>
                 );
               })}
@@ -117,10 +142,10 @@ const Landing = () => {
             whileTap={{ scale: 0.98 }}
             onClick={handleStart}
             disabled={!name.trim()}
-            className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 text-white font-bold py-4 rounded-xl text-lg shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 text-white p-6 rounded-xl font-bold text-xl shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all"
           >
-            Start Your Journey
-            <ArrowRight className="w-5 h-5" />
+            <span>Start Your Journey</span>
+            <ArrowRight className="w-6 h-6" />
           </motion.button>
         </div>
       </motion.div>
