@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 
-export type Level = 'Beginner' | 'Intermediate' | 'Advanced';
+export type Level = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
 
 export interface User {
   username: string;

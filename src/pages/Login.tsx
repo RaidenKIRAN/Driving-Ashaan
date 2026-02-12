@@ -21,7 +21,7 @@ const Login = () => {
     if (username.trim()) {
       const result = login(username, password);
       if (result.success) {
-        navigate('/dashboard');
+        navigate('/dashboard', { state: { isNewSignup: false } });
       } else {
         if (result.error === "couldn't find an account with this username") {
           setUsernameError(result.error);

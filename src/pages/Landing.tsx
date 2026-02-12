@@ -17,20 +17,22 @@ const levels: { id: Level; title: string; description: string; icon: React.Eleme
 
 const Landing = () => {
   const navigate = useNavigate();
-  const { name, setName, level, setLevel, signUp } = useUser();
+  const { level, setLevel, signUp } = useUser();
+  const [localName, setLocalName] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
+    // Ensure level is Beginner on mount
     if (level !== 'Beginner') {
       setLevel('Beginner');
     }
   }, [level, setLevel]);
 
   const handleStart = () => {
-    if (name.trim() && password.trim()) {
-      signUp(name, password, level);
-      navigate('/dashboard');
+    if (localName.trim() && password.trim()) {
+      signUp(localName, password, level);
+      navigate('/dashboard', { state: { isNewSignup: true } });
     }
   };
 
@@ -62,8 +64,8 @@ const Landing = () => {
             <label className="block text-sm font-medium text-gray-400 ml-1">What should we call you?</label>
             <input
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={localName}
+              onChange={(e) => setLocalName(e.target.value)}
               placeholder="Enter your name"
               className="w-full bg-gray-900 border border-gray-700 rounded-xl px-6 py-4 text-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-gray-600"
             />
@@ -126,7 +128,7 @@ const Landing = () => {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleStart}
-            disabled={!name.trim() || password.length < 4}
+            disabled={!localName.trim() || password.length < 4}
             className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 text-white p-6 rounded-xl font-bold text-xl shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all"
           >
             <span>Start Your Journey</span>

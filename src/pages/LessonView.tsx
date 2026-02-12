@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { lessons } from '../data/lessons';
 import { useUser } from '../context/UserContext';
@@ -8,12 +8,28 @@ import { ArrowLeft, CheckCircle, XCircle, MonitorPlay } from 'lucide-react';
 const LessonView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { markLessonComplete } = useUser();
+  const { markLessonComplete, level, setLevel } = useUser();
   const lesson = lessons.find(l => l.id === id);
   const [currentStep, setCurrentStep] = useState(0);
   const [quizScore, setQuizScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (showResult && lesson?.type === 'quiz') {
+      const questions = lesson.content?.questions || [];
+      const passingScore = level === 'Intermediate' && lesson.id === '8' ? 30 : Math.ceil(questions.length * 0.75);
+      const passed = quizScore >= passingScore;
+      if (passed) {
+        markLessonComplete(lesson.id);
+        if (lesson.id === '8') {
+          setLevel('Expert');
+        } else if (level === 'Beginner') {
+          setLevel('Intermediate');
+        }
+      }
+    }
+  }, [showResult, lesson, quizScore, level, setLevel, markLessonComplete]);
 
   if (!lesson) {
     return <div className="text-white p-10">Lesson not found</div>;
@@ -40,6 +56,23 @@ const LessonView = () => {
                 className="bg-gray-800 p-6 rounded-2xl border border-gray-700"
               >
                 <h3 className="text-xl font-bold mb-3 text-blue-400">{section.title}</h3>
+                {section.image && (
+                  <div className="mb-4 bg-white p-6 rounded-2xl flex flex-col items-center justify-center min-h-[200px] shadow-inner">
+                    <img 
+                      src={section.image} 
+                      alt={section.title} 
+                      className="max-h-40 w-auto object-contain transition-opacity duration-300"
+                      loading="lazy"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        if (!target.src.includes('placeholder')) {
+                          target.src = `https://placehold.co/200x200/white/60a5fa?text=${encodeURIComponent(section.title)}`;
+                        }
+                      }}
+                    />
+                    <p className="mt-2 text-xs text-gray-400 font-medium uppercase tracking-wider">Traffic Sign Image</p>
+                  </div>
+                )}
                 <p className="text-gray-300 leading-relaxed">{section.body}</p>
               </motion.div>
             ))}
@@ -51,8 +84,18 @@ const LessonView = () => {
           </div>
         );
 
-      case 'quiz':
-        const currentQuestion = lesson.content.questions[currentStep];
+      case 'quiz': {
+        const questions = lesson.content?.questions;
+        if (!questions || questions.length === 0) {
+          return <div className="text-white p-10">No questions available for this quiz.</div>;
+        }
+
+        const currentQuestion = questions[currentStep];
+
+        // Guard against invalid step/question
+        if (!currentQuestion && !showResult) {
+           return <div className="text-white p-10">Error loading question.</div>;
+        }
         
         const handleAnswer = (optionIndex: number) => {
            if (selectedOption !== null) return;
@@ -64,7 +107,7 @@ const LessonView = () => {
 
         const nextQuestion = () => {
            setSelectedOption(null);
-           if (currentStep < lesson.content.questions.length - 1) {
+           if (currentStep < questions.length - 1) {
              setCurrentStep(s => s + 1);
            } else {
              setShowResult(true);
@@ -72,13 +115,31 @@ const LessonView = () => {
         };
 
         if (showResult) {
+           const passingScore = level === 'Intermediate' && lesson.id === '8' ? 30 : Math.ceil(questions.length * 0.75);
+           const passed = quizScore >= passingScore;
+           const wrongAnswers = questions.length - quizScore;
+
            return (
              <div className="text-center space-y-6 py-10">
                <div className="text-6xl mb-4">
-                 {quizScore === lesson.content.questions.length ? '🏆' : '📝'}
+                 {passed ? '🏆' : '📝'}
                </div>
-               <h2 className="text-3xl font-bold">Quiz Complete!</h2>
-               <p className="text-xl text-gray-400">You scored {quizScore} out of {lesson.content.questions.length}</p>
+               <h2 className="text-3xl font-bold">{passed ? 'Quiz Passed!' : 'Quiz Completed!'}</h2>
+               <div className="flex justify-center gap-8 text-xl text-gray-400">
+                 <p className="text-green-400">Score: {quizScore}</p>
+                 <p className="text-red-400">Wrong: {wrongAnswers}</p>
+               </div>
+               {passed ? (
+                  <div className="bg-green-500/10 border border-green-500/50 p-4 rounded-xl max-w-md mx-auto">
+                    <p className="text-green-400 font-semibold">
+                      {lesson.id === '8' ? 'Congratulations, you are now Expert level' : "Congratulations! You've passed the quiz!"}
+                    </p>
+                  </div>
+               ) : (
+                  <div className="bg-red-500/10 border border-red-500/50 p-4 rounded-xl max-w-md mx-auto">
+                    <p className="text-red-400">You need {passingScore} correct answers to pass. Try again!</p>
+                  </div>
+               )}
                <button onClick={handleBack} className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-semibold mt-4">
                  Back to Dashboard
                </button>
@@ -89,7 +150,7 @@ const LessonView = () => {
         return (
           <div className="max-w-2xl mx-auto space-y-8">
              <div className="flex justify-between items-center text-sm text-gray-400">
-               <span>Question {currentStep + 1} of {lesson.content.questions.length}</span>
+               <span>Question {currentStep + 1} of {questions.length}</span>
                <span>Score: {quizScore}</span>
              </div>
              
@@ -137,12 +198,13 @@ const LessonView = () => {
                    onClick={nextQuestion}
                    className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-semibold transition-colors"
                  >
-                   {currentStep < lesson.content.questions.length - 1 ? 'Next Question' : 'Finish Quiz'}
+                   {currentStep < questions.length - 1 ? 'Next Question' : 'Finish Quiz'}
                  </button>
                </div>
              )}
           </div>
         );
+      }
 
       case 'simulation':
         return (
