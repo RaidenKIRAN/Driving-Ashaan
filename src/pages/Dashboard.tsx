@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { clsx } from 'clsx';
 
 const Dashboard = () => {
-  const { name, level, completedLessons } = useUser();
+  const { name, level, completedLessons, simulationScores } = useUser();
 
   const recommendedLessons = lessons.filter(l => l.level === level);
   const otherLessons = lessons.filter(l => l.level !== level);
@@ -35,7 +35,8 @@ const Dashboard = () => {
                 key={lesson.id} 
                 lesson={lesson} 
                 index={index} 
-                isCompleted={completedLessons.includes(lesson.id)} 
+                isCompleted={completedLessons.includes(lesson.id)}
+                score={simulationScores[lesson.id]}
               />
             ))}
           </div>
@@ -50,7 +51,8 @@ const Dashboard = () => {
                   key={lesson.id} 
                   lesson={lesson} 
                   index={index} 
-                  isCompleted={completedLessons.includes(lesson.id)} 
+                  isCompleted={completedLessons.includes(lesson.id)}
+                  score={simulationScores[lesson.id]}
                 />
               ))}
             </div>
@@ -61,7 +63,7 @@ const Dashboard = () => {
   );
 };
 
-const LessonCard = ({ lesson, index, isCompleted }: { lesson: any, index: number, isCompleted: boolean }) => {
+const LessonCard = ({ lesson, index, isCompleted, score }: { lesson: any, index: number, isCompleted: boolean, score?: number }) => {
   const Icon = lesson.icon;
   const navigate = useNavigate();
   return (
@@ -99,7 +101,11 @@ const LessonCard = ({ lesson, index, isCompleted }: { lesson: any, index: number
           {lesson.duration}
         </div>
         <div className="flex items-center gap-1">
-          {isCompleted ? (
+          {lesson.type === 'simulation' && typeof score === 'number' ? (
+            <span className="text-emerald-400 font-medium">
+              Score: {score}
+            </span>
+          ) : isCompleted ? (
             <span className="text-green-500 font-medium flex items-center gap-1">
               Completed
             </span>

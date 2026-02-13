@@ -1,19 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { lessons } from '../data/lessons';
 import { useUser } from '../context/UserContext';
 import { motion } from 'framer-motion';
-import { ArrowLeft, CheckCircle, XCircle, MonitorPlay } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
 
 const LessonView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { markLessonComplete } = useUser();
+  const { markLessonComplete, setSimulationScore } = useUser();
   const lesson = lessons.find(l => l.id === id);
   const [currentStep, setCurrentStep] = useState(0);
   const [quizScore, setQuizScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [liveSimulationScore, setLiveSimulationScore] = useState<number | null>(null);
+  const unityBuildPath = '/Builded%20Game%20File/index.html';
+  const unityIframeRef = useRef<HTMLIFrameElement | null>(null);
 
   if (!lesson) {
     return <div className="text-white p-10">Lesson not found</div>;
@@ -22,9 +25,38 @@ const LessonView = () => {
   const handleBack = () => navigate('/dashboard');
   
   const handleComplete = () => {
+    if (lesson?.type === 'simulation' && liveSimulationScore !== null) {
+      setSimulationScore(lesson.id, liveSimulationScore);
+    }
     if (lesson) markLessonComplete(lesson.id);
     navigate('/dashboard');
   };
+
+  const focusUnityFrame = () => {
+    unityIframeRef.current?.focus();
+    unityIframeRef.current?.contentWindow?.focus();
+  };
+
+  useEffect(() => {
+    if (!lesson || lesson.type !== 'simulation') return;
+
+    const handleUnityScoreMessage = (event: MessageEvent) => {
+      if (event.source !== unityIframeRef.current?.contentWindow) return;
+
+      const messageData = event.data;
+      if (!messageData || typeof messageData !== 'object') return;
+
+      if (messageData.type !== 'SIMULATION_SCORE') return;
+
+      const parsedScore = Number(messageData.score);
+      if (Number.isFinite(parsedScore)) {
+        setLiveSimulationScore(parsedScore);
+      }
+    };
+
+    window.addEventListener('message', handleUnityScoreMessage);
+    return () => window.removeEventListener('message', handleUnityScoreMessage);
+  }, [lesson]);
 
   const renderContent = () => {
     switch (lesson.type) {
@@ -146,20 +178,23 @@ const LessonView = () => {
 
       case 'simulation':
         return (
-           <div className="space-y-6 text-center py-10">
-             <div className="bg-gray-800 p-10 rounded-3xl border border-gray-700 min-h-[400px] flex flex-col items-center justify-center relative overflow-hidden group">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-emerald-900/20" />
-                <MonitorPlay className="w-20 h-20 text-blue-500 mb-6 group-hover:scale-110 transition-transform" />
-                <h3 className="text-2xl font-bold relative z-10">{lesson.content.scenario}</h3>
-                <p className="text-gray-400 max-w-md mt-4 relative z-10">{lesson.content.instruction}</p>
-                <div className="mt-8 px-4 py-2 bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-lg text-sm relative z-10">
-                  Simulation Placeholder: In a real app, this would be an interactive Canvas or 3D scene.
-                </div>
-             </div>
-             <button onClick={handleComplete} className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-semibold">
-               End Simulation
-             </button>
-           </div>
+          <div className="fixed inset-0 z-50 bg-black">
+            <iframe
+              ref={unityIframeRef}
+              src={unityBuildPath}
+              title="Unity WebGL Simulation"
+              className="w-full h-full border-0"
+              allowFullScreen
+              tabIndex={0}
+              onLoad={focusUnityFrame}
+            />
+            <button
+              onClick={handleComplete}
+              className="fixed bottom-6 right-6 z-[60] bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-full font-semibold shadow-lg shadow-blue-900/40"
+            >
+              End Simulation{liveSimulationScore !== null ? ` (${liveSimulationScore})` : ''}
+            </button>
+          </div>
         );
 
       default:
