@@ -3,9 +3,9 @@ import { UserProvider } from './context/UserContext';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import LessonView from './pages/LessonView';
+import Intro from './pages/Intro';
 import Welcome from './pages/Welcome';
 import Login from './pages/Login';
-import Intro from './pages/Intro';
 
 function App() {
   return (
