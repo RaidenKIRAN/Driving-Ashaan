@@ -8,6 +8,9 @@ export interface User {
   password?: string;
   level: Level;
   completedLessons: string[];
+  points: number;
+  lastScore: number;
+  badges: number;
 }
 
 interface LoginResult {
@@ -20,9 +23,13 @@ interface UserContextType {
   name: string; // Keep for backward compatibility/easy access
   level: Level; // Keep for backward compatibility/easy access
   completedLessons: string[]; // Keep for backward compatibility/easy access
+  points: number;
+  lastScore: number;
+  badges: number;
   setName: (name: string) => void; // Keep for compatibility
   setLevel: (level: Level) => void; // Keep for compatibility
   markLessonComplete: (lessonId: string) => void;
+  updateScore: (score: number) => void;
   signUp: (username: string, password: string, level: Level) => void;
   login: (username: string, password: string) => LoginResult;
   logout: () => void;
@@ -54,7 +61,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       username,
       password,
       level,
-      completedLessons: []
+      completedLessons: [],
+      points: 0,
+      lastScore: 0,
+      badges: 0
     };
 
     // Save to users list
@@ -78,14 +88,20 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       return { success: false, error: "incorrect password" };
     }
 
-    setUser(targetUser);
+    // Reset points and migrate existing users
+    const migratedUser = {
+      ...targetUser,
+      points: 0,
+      lastScore: targetUser.lastScore || 0,
+      badges: targetUser.badges || 0
+    };
+
+    setUser(migratedUser);
     return { success: true };
   };
 
   const logout = () => {
     setUser(null);
-    setTempName('');
-    setTempLevel('Beginner');
   };
 
   const markLessonComplete = (lessonId: string) => {
@@ -97,7 +113,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       
       const updatedUser = {
         ...prev,
-        completedLessons: [...prev.completedLessons, lessonId]
+        completedLessons: [...prev.completedLessons, lessonId],
+        badges: Math.floor(((prev.completedLessons?.length || 0) + 1) / 3)
       };
       
       // Update in localStorage users list as well
@@ -109,12 +126,30 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  const updateScore = (score: number) => {
+    if (!user) return;
+    setUser(prev => {
+      if (!prev) return null;
+      
+      // Accumulate points and update lastScore
+      const updatedUser = {
+        ...prev,
+        lastScore: score,
+        points: (prev.points || 0) + score
+      };
+      
+      const users = JSON.parse(localStorage.getItem('users') || '{}');
+      users[prev.username] = updatedUser;
+      localStorage.setItem('users', JSON.stringify(users));
+
+      return updatedUser;
+    });
+  };
+
   // Helper setters that update the current user object or temp state
   const setName = (name: string) => {
     if (user) {
-      // If logged in, we generally shouldn't change username, but if needed:
-      // setUser({ ...user, username: name });
-      // For now, let's just update temp state if not logged in
+      setUser({ ...user, username: name });
     } else {
       setTempName(name);
     }
@@ -133,15 +168,26 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Add a one-time fix for the current user session
+  useEffect(() => {
+    if (user && user.points > 1000) { // Arbitrary "big figure" check
+      setUser(prev => prev ? { ...prev, points: 0 } : null);
+    }
+  }, []);
+
   return (
     <UserContext.Provider value={{ 
       user, 
       name: user ? user.username : tempName, 
       level: user ? user.level : tempLevel, 
       completedLessons: user ? user.completedLessons : [],
+      points: user ? user.points : 0,
+      lastScore: user ? user.lastScore : 0,
+      badges: user ? user.badges : 0,
       setName, 
       setLevel, 
       markLessonComplete,
+      updateScore,
       signUp,
       login,
       logout

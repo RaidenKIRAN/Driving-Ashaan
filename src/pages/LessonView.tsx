@@ -8,18 +8,25 @@ import { ArrowLeft, CheckCircle, XCircle, MonitorPlay } from 'lucide-react';
 const LessonView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { markLessonComplete, level, setLevel } = useUser();
+  const { markLessonComplete, level, setLevel, updateScore } = useUser();
   const lesson = lessons.find(l => l.id === id);
   const [currentStep, setCurrentStep] = useState(0);
   const [quizScore, setQuizScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [hasUpdatedScore, setHasUpdatedScore] = useState(false);
 
   useEffect(() => {
-    if (showResult && lesson?.type === 'quiz') {
+    if (showResult && lesson?.type === 'quiz' && !hasUpdatedScore) {
       const questions = lesson.content?.questions || [];
       const passingScore = level === 'Intermediate' && lesson.id === '8' ? 30 : Math.ceil(questions.length * 0.75);
       const passed = quizScore >= passingScore;
+      
+      // Update score in context only once
+      const scoreInPoints = quizScore * 10; // 10 points per correct answer
+      updateScore(scoreInPoints); 
+      setHasUpdatedScore(true);
+
       if (passed) {
         markLessonComplete(lesson.id);
         if (lesson.id === '8') {
@@ -29,7 +36,7 @@ const LessonView = () => {
         }
       }
     }
-  }, [showResult, lesson, quizScore, level, setLevel, markLessonComplete]);
+  }, [showResult, lesson, quizScore, level, setLevel, markLessonComplete, updateScore, hasUpdatedScore]);
 
   if (!lesson) {
     return <div className="text-white p-10">Lesson not found</div>;

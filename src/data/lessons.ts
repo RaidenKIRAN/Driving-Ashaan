@@ -11,6 +11,7 @@ export interface Lesson {
   type: 'theory' | 'quiz' | 'simulation';
   icon: any;
   content: any;
+  
 }
 
 export const lessons: Lesson[] = [
