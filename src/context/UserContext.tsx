@@ -33,6 +33,9 @@ interface UserContextType {
   signUp: (username: string, password: string, level: Level) => void;
   login: (username: string, password: string) => LoginResult;
   logout: () => void;
+  deleteAccount: () => void;
+  theme: 'dark' | 'light';
+  toggleTheme: () => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -47,6 +50,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   // Temporary state for signup flow before actual registration
   const [tempName, setTempName] = useState('');
   const [tempLevel, setTempLevel] = useState<Level>('Beginner');
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    const savedTheme = localStorage.getItem('theme');
+    return (savedTheme as 'dark' | 'light') || 'dark';
+  });
 
   useEffect(() => {
     if (user) {
@@ -55,6 +62,31 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem('currentUser');
     }
   }, [user]);
+
+  useEffect(() => {
+    localStorage.setItem('theme', theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
+
+  const deleteAccount = () => {
+    if (!user) return;
+    
+    // Remove from users list
+    const users = JSON.parse(localStorage.getItem('users') || '{}');
+    delete users[user.username];
+    localStorage.setItem('users', JSON.stringify(users));
+    
+    // Logout
+    setUser(null);
+  };
 
   const signUp = (username: string, password: string, level: Level) => {
     const newUser: User = {
@@ -190,7 +222,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       updateScore,
       signUp,
       login,
-      logout
+      logout,
+      deleteAccount,
+      theme,
+      toggleTheme
     }}>
       {children}
     </UserContext.Provider>

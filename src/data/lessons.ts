@@ -1,6 +1,12 @@
 import type { Level } from '../context/UserContext';
 import { BookOpen, MonitorPlay, BrainCircuit } from 'lucide-react';
 import schoolAheadSign from '../assets/file.svg';
+import pedestrianCrossingSign from '../assets/pedestrian-crossing.svg';
+import hospitalSign from '../assets/hospital-road-sign-vector-12091236.svg';
+import noHornSign from '../assets/no-horn-icon.png';
+import compulsoryAheadSign from '../assets/Gemini_Generated_Image_4rveqi4rveqi4rve.svg';
+import narrowBridgeSign from '../assets/narrow-bridge-sign-icon.svg';
+import oneWaySign from '../assets/circle-traffic-sign-road-sign-vector-template_917138-5617.svg';
 
 export interface Lesson {
   id: string;
@@ -47,32 +53,32 @@ export const lessons: Lesson[] = [
         },
         {
           title: 'Cautionary: PEDESTRIAN CROSSING',
-          image: 'https://img.icons8.com/color/240/walking-off-road.png',
+          image: pedestrianCrossingSign,
           body: 'A triangle showing a person walking. Slow down and be ready to stop for pedestrians.',
         },
         {
           title: 'Informatory: HOSPITAL',
-          image: 'https://img.icons8.com/color/240/hospital-sign.png',
+          image: hospitalSign,
           body: 'A blue rectangle with a bed symbol. Indicates a hospital is nearby. Avoid using the horn.',
         },
         {
           title: 'Mandatory: NO HORN',
-          image: 'https://img.icons8.com/color/240/no-audio.png',
+          image: noHornSign,
           body: 'A circle with a horn symbol and a red diagonal bar. Do not use the horn except to avoid an accident.',
         },
         {
           title: 'Mandatory: COMPULSORY AHEAD',
-          image: 'https://img.icons8.com/color/240/up.png',
+          image: compulsoryAheadSign,
           body: 'A blue circle with a white arrow pointing up. You must only proceed straight.',
         },
         {
           title: 'Cautionary: NARROW BRIDGE',
-          image: 'https://img.icons8.com/color/240/bridge.png',
+          image: narrowBridgeSign,
           body: 'A triangle showing a road narrowing. Slow down and watch for oncoming traffic on the bridge.',
         },
         {
           title: 'Mandatory: ONE WAY',
-          image: 'https://img.icons8.com/color/240/one-way-street.png',
+          image: oneWaySign,
           body: 'A blue rectangle with a white arrow. Indicates traffic is allowed in one direction only.',
         }
       ]

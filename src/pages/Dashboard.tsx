@@ -1,20 +1,57 @@
 import { useUser } from '../context/UserContext';
 import { lessons } from '../data/lessons';
 import { motion } from 'framer-motion';
-import { Play, Clock, CheckCircle, LogOut, Lock, BrainCircuit, Trophy, TrendingUp, Medal } from 'lucide-react';
+import type { Variants } from 'framer-motion';
+import { Play, Clock, CheckCircle, Lock, BrainCircuit, Trophy, TrendingUp, Medal } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
+import { useEffect, useState } from 'react';
+import { ProfileMenu } from '../components/ProfileMenu';
+
+const CountUpCount = ({ value }: { value: number | string }) => {
+  const [count, setCount] = useState(0);
+  const numValue = typeof value === 'string' ? parseInt(value.replace(/[^0-9]/g, ''), 10) : value;
+  
+  useEffect(() => {
+    if (isNaN(numValue)) return;
+    let start = 0;
+    const end = numValue;
+    if (start === end) return;
+    
+    let totalDuration = 1000;
+    let incrementTime = (totalDuration / end) * 2;
+    
+    const timer = setInterval(() => {
+      start += 1;
+      setCount(start);
+      if (start === end) clearInterval(timer);
+    }, incrementTime);
+    
+    return () => clearInterval(timer);
+  }, [numValue]);
+
+  if (isNaN(numValue)) return <>{value}</>;
+  return <>{count}{typeof value === 'string' && value.includes('pts') ? ' pts' : ''}</>;
+};
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1, delayChildren: 0.1 }
+  }
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } }
+};
 
 const Dashboard = () => {
-  const { name, level, completedLessons, logout, points, lastScore, badges } = useUser();
+  const { name, level, completedLessons, points, lastScore, badges } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
   const isNewSignup = location.state?.isNewSignup;
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
 
   const recommendedLessons = lessons.filter(l => 
     l.type !== 'quiz' && (
@@ -34,191 +71,208 @@ const Dashboard = () => {
   );
 
   const getLockedStatus = (lesson: any) => {
-    // Theories are never locked regardless of level
     if (lesson.type === 'theory') return false;
-
-    // Beginner level locking rules
     if (level === 'Beginner') {
-      // Simulations are locked for beginners
       if (lesson.type === 'simulation') return true;
-      // Intermediate level quizzes/content is locked for beginners
       if (lesson.level === 'Intermediate') return true;
-      // Explicitly lock intermediate quiz
       if (lesson.id === '8') return true;
     }
-    
-    // Intermediate level locking rules
     if (level === 'Intermediate') {
-      // Advanced content (if any) is locked for intermediate
       if (lesson.level === 'Advanced') return true;
     }
-
     return false;
   };
 
   const stats = [
-    { label: 'Total Points', value: points, icon: Trophy, color: 'bg-blue-500/10 text-blue-500' },
-    { label: 'Last Session', value: `${lastScore} pts`, icon: TrendingUp, color: 'bg-green-500/10 text-green-500' },
-    { label: 'Badges', value: badges, icon: Medal, color: 'bg-orange-500/10 text-orange-500' },
+    { label: 'Total Points', value: points, icon: Trophy, color: 'from-blue-600 to-blue-400', shadow: 'shadow-blue-500/20' },
+    { label: 'Last Session', value: `${lastScore} pts`, icon: TrendingUp, color: 'from-emerald-600 to-emerald-400', shadow: 'shadow-emerald-500/20' },
+    { label: 'Badges', value: badges, icon: Medal, color: 'from-purple-600 to-purple-400', shadow: 'shadow-purple-500/20' },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="max-w-6xl mx-auto space-y-12">
-        <header className="flex justify-between items-center">
+    <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white p-4 md:p-8 relative overflow-hidden transition-colors duration-300">
+      {/* Dynamic Background Gradient */}
+      <motion.div 
+        animate={{ 
+          rotate: [0, 5, -5, 0],
+          scale: [1, 1.05, 1]
+        }}
+        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        className="absolute top-0 right-0 w-[60vw] h-[60vw] max-w-[800px] max-h-[800px] bg-gradient-to-bl from-blue-900/10 via-emerald-900/5 to-transparent rounded-full blur-[100px] pointer-events-none translate-x-1/4 -translate-y-1/4"
+      />
+      
+      <motion.div 
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="max-w-6xl mx-auto space-y-12 relative z-10"
+      >
+        <motion.header variants={itemVariants} className="relative z-20 flex flex-col md:flex-row gap-4 justify-between items-start md:items-center bg-gray-100 dark:bg-gray-800/40 p-6 rounded-3xl border border-gray-200 dark:border-gray-700/50 backdrop-blur-md">
           <div>
-            <h1 className="text-3xl font-bold">{isNewSignup ? 'Welcome' : 'Welcome back'}, {name}</h1>
-            <p className="text-gray-400 mt-2">Current Level: <span className="text-blue-400 font-semibold">{level}</span></p>
+            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 dark:from-white to-gray-500 dark:to-gray-400">
+              {isNewSignup ? 'Welcome' : 'Welcome back'}, {name}
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400 mt-2 flex items-center gap-2">
+              Current Level: 
+              <span className="px-3 py-1 bg-blue-600/20 text-blue-600 dark:text-blue-400 rounded-full font-semibold border border-blue-500/20 shadow-[0_0_10px_rgba(59,130,246,0.2)]">
+                {level}
+              </span>
+            </p>
           </div>
-          <div className="flex items-center gap-4">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleLogout}
-              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-red-400 rounded-xl font-medium border border-gray-700 flex items-center gap-2 transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Logout</span>
-            </motion.button>
-            <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center border border-gray-700">
-              <span className="text-xl font-bold text-blue-500">{name.charAt(0).toUpperCase()}</span>
-            </div>
+          <div className="flex items-center gap-4 w-full md:w-auto justify-end">
+            <ProfileMenu />
           </div>
-        </header>
+        </motion.header>
 
         {/* Stats Section */}
         <section className="grid md:grid-cols-3 gap-6">
-          {stats.map((stat, idx) => (
+          {stats.map((stat) => (
             <motion.div
+              variants={itemVariants}
+              whileHover={{ y: -5, scale: 1.02 }}
               key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              className="bg-gray-800 border border-gray-700 rounded-2xl p-6 flex items-center gap-6 shadow-lg shadow-black/20"
+              className={clsx("bg-white dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/50 rounded-3xl p-6 flex items-center gap-6 backdrop-blur-md shadow-lg transition-all", stat.shadow)}
             >
-              <div className={clsx("p-4 rounded-xl", stat.color)}>
-                <stat.icon className="w-8 h-8" />
+              <div className={clsx("p-4 rounded-2xl bg-gradient-to-br", stat.color)}>
+                <stat.icon className="w-8 h-8 text-white" />
               </div>
               <div>
-                <p className="text-gray-400 text-sm font-medium">{stat.label}</p>
-                <p className="text-3xl font-bold">{stat.value}</p>
+                <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">{stat.label}</p>
+                <div className="text-3xl font-bold text-gray-900 dark:text-white">
+                  <CountUpCount value={stat.value} />
+                </div>
               </div>
             </motion.div>
           ))}
         </section>
 
-        <section className="space-y-6">
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Play className="w-6 h-6 text-blue-500" />
+        <motion.section variants={itemVariants} className="space-y-6">
+          <h2 className="text-2xl font-bold flex items-center gap-3">
+            <div className="p-2 bg-blue-500/20 rounded-lg">
+              <Play className="w-6 h-6 text-blue-400" />
+            </div>
             Recommended Lessons
           </h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {recommendedLessons.map((lesson, index) => (
+            {recommendedLessons.map((lesson) => (
               <LessonCard 
                 key={lesson.id} 
                 lesson={lesson} 
-                index={index} 
-                level={level}
                 isCompleted={completedLessons.includes(lesson.id)}
                 isLocked={getLockedStatus(lesson)}
               />
             ))}
           </div>
-        </section>
+        </motion.section>
 
-        <section className="space-y-6">
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <BrainCircuit className="w-6 h-6 text-purple-500" />
-            Quiz
+        <motion.section variants={itemVariants} className="space-y-6">
+          <h2 className="text-2xl font-bold flex items-center gap-3">
+            <div className="p-2 bg-purple-500/20 rounded-lg">
+              <BrainCircuit className="w-6 h-6 text-purple-400" />
+            </div>
+            Quizzes & Assessments
           </h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {quizLessons.map((lesson, index) => (
+            {quizLessons.map((lesson) => (
               <LessonCard 
                 key={lesson.id} 
                 lesson={lesson} 
-                index={index} 
-                level={level}
                 isCompleted={completedLessons.includes(lesson.id)}
                 isLocked={getLockedStatus(lesson)}
               />
             ))}
           </div>
-        </section>
+        </motion.section>
 
         {otherLessons.length > 0 && (
-          <section className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-400">Other Modules</h2>
+          <motion.section variants={itemVariants} className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-500 flex items-center gap-3">
+              Other Modules
+            </h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-75">
-              {otherLessons.map((lesson, index) => (
+              {otherLessons.map((lesson) => (
                 <LessonCard 
                   key={lesson.id} 
                   lesson={lesson} 
-                  index={index} 
-                  level={level}
                   isCompleted={completedLessons.includes(lesson.id)}
                   isLocked={getLockedStatus(lesson)}
                 />
               ))}
             </div>
-          </section>
+          </motion.section>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 };
 
-const LessonCard = ({ lesson, index, isCompleted, isLocked, level }: { lesson: any, index: number, isCompleted: boolean, isLocked?: boolean, level: string }) => {
+const LessonCard = ({ lesson, isCompleted, isLocked }: { lesson: any, isCompleted: boolean, isLocked?: boolean }) => {
   const Icon = lesson.icon;
   const navigate = useNavigate();
-  
   const displayTitle = lesson.title;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }}
+      whileHover={!isLocked ? { scale: 1.03, y: -5 } : {}}
+      whileTap={!isLocked ? { scale: 0.98 } : {}}
       onClick={() => !isLocked && navigate('/lesson/' + lesson.id)}
       className={clsx(
-        "border rounded-2xl p-6 transition-all relative overflow-hidden",
-        isLocked ? "bg-gray-800/50 border-gray-700 cursor-not-allowed opacity-75" : "hover:shadow-lg hover:shadow-blue-500/10 cursor-pointer group",
-        isCompleted ? "bg-gray-800/50 border-green-500/50" : (!isLocked && "bg-gray-800 border-gray-700 hover:border-blue-500/50")
+        "border rounded-3xl p-6 transition-all relative overflow-hidden flex flex-col h-full",
+        isLocked 
+          ? "bg-gray-100 dark:bg-gray-800/30 border-gray-200 dark:border-gray-700/50 cursor-not-allowed opacity-60" 
+          : "hover:shadow-2xl hover:shadow-blue-500/20 cursor-pointer group",
+        isCompleted 
+          ? "bg-green-50 dark:bg-gray-800/80 border-green-500/40 shadow-[0_0_15px_rgba(16,185,129,0.1)]" 
+          : (!isLocked && "bg-white dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 hover:border-blue-500/50 backdrop-blur-sm")
       )}
     >
+      {/* Hover Gradient Effect */}
+      {!isLocked && !isCompleted && (
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/0 to-blue-600/0 group-hover:from-blue-600/10 group-hover:to-transparent transition-all duration-500" />
+      )}
+
       {isCompleted && (
-        <div className="absolute top-0 right-0 p-2 bg-green-500/10 rounded-bl-2xl">
-          <CheckCircle className="w-5 h-5 text-green-500" />
+        <div className="absolute top-0 right-0 p-3 bg-gradient-to-bl from-green-500/20 to-transparent rounded-bl-3xl">
+          <CheckCircle className="w-6 h-6 text-green-500 dark:text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.5)]" />
         </div>
       )}
       {isLocked && (
-        <div className="absolute top-0 right-0 p-2 bg-gray-700/50 rounded-bl-2xl">
-          <Lock className="w-5 h-5 text-gray-400" />
+        <div className="absolute top-0 right-0 p-3 bg-gradient-to-bl from-gray-200 dark:from-gray-700/50 to-transparent rounded-bl-3xl">
+          <Lock className="w-5 h-5 text-gray-400 dark:text-gray-500" />
         </div>
       )}
-      <div className="flex justify-between items-start mb-4">
+
+      <div className="flex justify-between items-start mb-6 relative z-10">
         <div className={clsx(
-          "p-3 rounded-xl transition-colors",
-          isCompleted ? "bg-green-500/10" : (isLocked ? "bg-gray-700" : "bg-gray-700/50 group-hover:bg-blue-500/20")
+          "p-3 rounded-2xl transition-colors",
+          isCompleted ? "bg-green-100 dark:bg-green-500/20" : (isLocked ? "bg-gray-200 dark:bg-gray-700/50" : "bg-gray-100 dark:bg-gray-700/50 group-hover:bg-blue-500/30")
         )}>
-          <Icon className={clsx("w-6 h-6", isCompleted ? "text-green-500" : (isLocked ? "text-gray-500" : "text-blue-400 group-hover:text-blue-300"))} />
+          <Icon className={clsx("w-6 h-6", isCompleted ? "text-green-600 dark:text-green-400" : (isLocked ? "text-gray-400 dark:text-gray-500" : "text-blue-600 dark:text-blue-400 group-hover:text-blue-600 dark:group-hover:text-white transition-colors"))} />
         </div>
-        <span className="text-xs font-medium px-3 py-1 bg-gray-700 rounded-full text-gray-300">
+        <span className={clsx(
+          "text-xs font-semibold px-3 py-1 rounded-full border",
+          isLocked ? "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700" : "bg-white dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600"
+        )}>
           {lesson.type.charAt(0).toUpperCase() + lesson.type.slice(1)}
         </span>
       </div>
-      <h3 className={clsx("text-xl font-semibold mb-2 transition-colors", isCompleted ? "text-green-100" : (isLocked ? "text-gray-400" : "group-hover:text-blue-400"))}>{displayTitle}</h3>
-      <p className="text-gray-400 text-sm mb-4 line-clamp-2">{lesson.description}</p>
-      <div className="flex items-center gap-4 text-xs text-gray-500">
-        <div className="flex items-center gap-1">
-          <Clock className="w-4 h-4" />
-          {lesson.duration}
-        </div>
-        {isLocked && (
-          <div className="text-orange-400 text-xs flex items-center gap-1">
-            <Lock className="w-3 h-3" />
-            Locked: Upgrade Level
+      
+      <div className="relative z-10 flex flex-col flex-grow">
+        <h3 className={clsx("text-xl font-bold mb-2 transition-colors", isCompleted ? "text-green-900 dark:text-green-50" : (isLocked ? "text-gray-400 dark:text-gray-400" : "text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-300"))}>{displayTitle}</h3>
+        <p className="text-gray-500 dark:text-gray-400 text-sm mb-6 line-clamp-2 flex-grow">{lesson.description}</p>
+        
+        <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700/50">
+          <div className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
+            <Clock className="w-4 h-4" />
+            {lesson.duration}
           </div>
-        )}
+          {isLocked && (
+            <div className="text-orange-500 dark:text-orange-400/80 text-xs font-semibold flex items-center gap-1">
+              <Lock className="w-3 h-3" />
+              Locked
+            </div>
+          )}
+        </div>
       </div>
     </motion.div>
   );
