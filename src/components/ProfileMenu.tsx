@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LogOut, Trash2, Moon, Sun, AlertTriangle } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useNavigate } from 'react-router-dom';
-import { clsx } from 'clsx';
 
 export const ProfileMenu = () => {
   const { name, logout, deleteAccount, theme, toggleTheme } = useUser();
