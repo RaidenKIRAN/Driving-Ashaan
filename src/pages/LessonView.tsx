@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { lessons } from '../data/lessons';
 import { useUser } from '../context/UserContext';
@@ -15,6 +15,7 @@ const LessonView = () => {
   const [showResult, setShowResult] = useState(false);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [hasUpdatedScore, setHasUpdatedScore] = useState(false);
+  const simulationFrameRef = useRef<HTMLIFrameElement | null>(null);
 
   useEffect(() => {
     if (showResult && lesson?.type === 'quiz' && !hasUpdatedScore) {
@@ -36,6 +37,36 @@ const LessonView = () => {
       }
     }
   }, [showResult, lesson, quizScore, level, setLevel, markLessonComplete, updateScore, hasUpdatedScore]);
+
+  useEffect(() => {
+    if (lesson?.type !== 'simulation') {
+      return;
+    }
+
+    const frame = simulationFrameRef.current;
+    if (!frame) {
+      return;
+    }
+
+    const focusSimulation = () => {
+      frame.focus();
+
+      try {
+        const canvas = frame.contentWindow?.document.querySelector<HTMLCanvasElement>('#unity-canvas');
+        canvas?.focus();
+      } catch {
+        // Same-origin today, but keep this safe if the embed changes later.
+      }
+    };
+
+    const timer = window.setTimeout(focusSimulation, 150);
+    frame.addEventListener('load', focusSimulation);
+
+    return () => {
+      window.clearTimeout(timer);
+      frame.removeEventListener('load', focusSimulation);
+    };
+  }, [lesson?.type]);
 
   if (!lesson) {
     return (
@@ -311,10 +342,12 @@ const LessonView = () => {
            <div className="fixed inset-0 z-[60] bg-gray-900 overflow-hidden">
              {/* Full Screen Iframe */}
              <iframe 
+               ref={simulationFrameRef}
                src="/gamefile/index.html" 
-               className="w-full h-full border-none"
+               className="absolute inset-0 w-full h-full border-none"
                title="Unity Simulation"
                allow="autoplay; fullscreen; keyboard"
+               tabIndex={0}
              />
 
              {/* Floating Info & Controls */}
@@ -351,9 +384,9 @@ const LessonView = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300">
+    <div className={`min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300 ${lesson.type === 'simulation' ? 'overflow-hidden' : ''}`}>
       {/* Header */}
-      <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
+      <header className={`${lesson.type === 'simulation' ? 'hidden' : 'bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50'}`}>
         <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
           <button 
             onClick={handleBack}
@@ -372,7 +405,7 @@ const LessonView = () => {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className={lesson.type === 'simulation' ? '' : 'max-w-4xl mx-auto px-4 py-8'}>
         {renderContent()}
       </main>
     </div>
