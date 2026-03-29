@@ -16,6 +16,7 @@ const LessonView = () => {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [hasUpdatedScore, setHasUpdatedScore] = useState(false);
   const simulationFrameRef = useRef<HTMLIFrameElement | null>(null);
+  const appliedSimulationResultsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (showResult && lesson?.type === 'quiz' && !hasUpdatedScore) {
@@ -67,6 +68,43 @@ const LessonView = () => {
       frame.removeEventListener('load', focusSimulation);
     };
   }, [lesson?.type]);
+
+  useEffect(() => {
+    if (lesson?.type !== 'simulation') {
+      return;
+    }
+
+    const handleSimulationMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
+      const data = event.data;
+      if (!data || data.source !== 'unity-simulation' || data.type !== 'session-result') {
+        return;
+      }
+
+      if (data.lessonId && data.lessonId !== lesson.id) {
+        return;
+      }
+
+      const score = Number(data.score) || 0;
+      const resultKey = String(data.resultId || `${lesson.id}:${score}:${Boolean(data.completed)}`);
+      if (appliedSimulationResultsRef.current.has(resultKey)) {
+        return;
+      }
+
+      appliedSimulationResultsRef.current.add(resultKey);
+      updateScore(score);
+
+      if (data.completed) {
+        markLessonComplete(lesson.id);
+      }
+    };
+
+    window.addEventListener('message', handleSimulationMessage);
+    return () => window.removeEventListener('message', handleSimulationMessage);
+  }, [lesson, markLessonComplete, updateScore]);
 
   if (!lesson) {
     return (
@@ -343,24 +381,12 @@ const LessonView = () => {
              {/* Full Screen Iframe */}
              <iframe 
                ref={simulationFrameRef}
-               src="/gamefile/index.html" 
+               src={`/Latest%20Game%20file/index.html?lessonId=${encodeURIComponent(lesson.id)}`} 
                className="absolute inset-0 w-full h-full border-none"
                title="Unity Simulation"
                allow="autoplay; fullscreen; keyboard"
                tabIndex={0}
              />
-
-             {/* Floating Info & Controls */}
-             <div className="absolute top-6 left-6 z-10 pointer-events-none">
-               <motion.div 
-                 initial={{ x: -20, opacity: 0 }}
-                 animate={{ x: 0, opacity: 1 }}
-                 className="px-6 py-3 bg-gray-900/80 border border-gray-700 backdrop-blur-md rounded-2xl text-sm font-mono text-emerald-400 flex items-center gap-3 shadow-2xl"
-               >
-                 <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                 Simulation Active: {lesson.content.scenario}
-               </motion.div>
-             </div>
 
              <div className="absolute bottom-8 right-8 z-10">
                <motion.button 
