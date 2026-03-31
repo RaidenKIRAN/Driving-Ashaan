@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/Latest Game file/(.*)",
+      "destination": "/Latest Game file/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
