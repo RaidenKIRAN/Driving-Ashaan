@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { lessons } from '../data/lessons';
 import { useUser } from '../context/UserContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, CheckCircle, XCircle, ChevronRight, Activity } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, ChevronRight } from 'lucide-react';
 
 const LessonView = () => {
   const { id } = useParams();

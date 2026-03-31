@@ -49,7 +49,7 @@ const itemVariants: Variants = {
 
 const Dashboard = () => {
   const { name, level, completedLessons, points, lastScore, badges } = useUser();
-  const navigate = useNavigate();
+  
   const location = useLocation();
   const isNewSignup = location.state?.isNewSignup;
 
