@@ -24,7 +24,8 @@ const LessonView = () => {
       const passingScore = level === 'Intermediate' && lesson.id === '8' ? 30 : Math.ceil(questions.length * 0.75);
       const passed = quizScore >= passingScore;
       
-      const scoreInPoints = quizScore * 10;
+      // Award points for attempting the quiz: 10 points per correct answer + 5 bonus if passed
+      const scoreInPoints = (quizScore * 10) + (passed ? 5 : 0);
       updateScore(scoreInPoints); 
       setHasUpdatedScore(true);
 
@@ -215,6 +216,7 @@ const LessonView = () => {
            const passingScore = level === 'Intermediate' && lesson.id === '8' ? 30 : Math.ceil(questions.length * 0.75);
            const passed = quizScore >= passingScore;
            const wrongAnswers = questions.length - quizScore;
+           const pointsEarned = (quizScore * 10) + (passed ? 5 : 0);
 
            return (
              <motion.div 
@@ -241,6 +243,13 @@ const LessonView = () => {
                    <span className="text-red-400 text-4xl">{wrongAnswers}</span>
                    <span className="text-sm text-gray-400 font-medium uppercase mt-2">Wrong</span>
                  </div>
+               </div>
+               
+               <div className="bg-blue-500/10 border border-blue-500/30 p-4 rounded-2xl max-w-md mx-auto">
+                 <p className="text-blue-400 font-semibold text-2xl">
+                   +{pointsEarned} Points
+                 </p>
+                 <p className="text-xs text-blue-300 mt-1">({quizScore} × 10{passed ? ' + 5 bonus' : ''})</p>
                </div>
                
                <div className="pt-4">
