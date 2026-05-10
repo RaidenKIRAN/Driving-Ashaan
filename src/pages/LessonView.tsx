@@ -5,6 +5,18 @@ import { useUser } from '../context/UserContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, CheckCircle, XCircle, ChevronRight } from 'lucide-react';
 
+type UnitySessionResult = {
+  score: number;
+  completed: boolean;
+  resultId: string;
+};
+
+declare global {
+  interface Window {
+    reportUnitySessionResult?: (payload: string) => void;
+  }
+}
+
 const LessonView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -15,6 +27,8 @@ const LessonView = () => {
   const [showResult, setShowResult] = useState(false);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [hasUpdatedScore, setHasUpdatedScore] = useState(false);
+  const [unityBridgeReady, setUnityBridgeReady] = useState(false);
+  const [simulationResult, setSimulationResult] = useState<UnitySessionResult | null>(null);
   const simulationFrameRef = useRef<HTMLIFrameElement | null>(null);
   const appliedSimulationResultsRef = useRef<Set<string>>(new Set());
 
@@ -26,11 +40,11 @@ const LessonView = () => {
       
       // Award points for attempting the quiz: 10 points per correct answer + 5 bonus if passed
       const scoreInPoints = (quizScore * 10) + (passed ? 5 : 0);
-      updateScore(scoreInPoints); 
+      updateScore(scoreInPoints, lesson.title); 
       setHasUpdatedScore(true);
 
       if (passed) {
-        markLessonComplete(lesson.id);
+        markLessonComplete(lesson.id, lesson.title);
         if (lesson.id === '8') {
           setLevel('Expert');
         } else if (level === 'Beginner') {
@@ -54,6 +68,7 @@ const LessonView = () => {
       frame.focus();
 
       try {
+        frame.contentWindow?.focus();
         const canvas = frame.contentWindow?.document.querySelector<HTMLCanvasElement>('#unity-canvas');
         canvas?.focus();
       } catch {
@@ -62,18 +77,74 @@ const LessonView = () => {
     };
 
     const timer = window.setTimeout(focusSimulation, 150);
+    const secondTimer = window.setTimeout(focusSimulation, 800);
     frame.addEventListener('load', focusSimulation);
 
     return () => {
       window.clearTimeout(timer);
+      window.clearTimeout(secondTimer);
       frame.removeEventListener('load', focusSimulation);
     };
-  }, [lesson?.type]);
+  }, [lesson?.type, unityBridgeReady]);
+
+  useEffect(() => {
+    setUnityBridgeReady(false);
+    setSimulationResult(null);
+    appliedSimulationResultsRef.current.clear();
+  }, [lesson?.id]);
 
   useEffect(() => {
     if (lesson?.type !== 'simulation') {
+      delete window.reportUnitySessionResult;
       return;
     }
+
+    const applySimulationResult = (payload: string) => {
+      let parsed: unknown;
+
+      try {
+        parsed = JSON.parse(payload);
+      } catch (error) {
+        console.error('Invalid Unity session result payload:', error);
+        return;
+      }
+
+      if (!parsed || typeof parsed !== 'object') {
+        return;
+      }
+
+      const data = parsed as Partial<UnitySessionResult> & { lessonId?: string };
+      if (data.lessonId && data.lessonId !== lesson.id) {
+        return;
+      }
+
+      const score = Number(data.score);
+      const completed = Boolean(data.completed);
+      const resultId = typeof data.resultId === 'string' && data.resultId
+        ? data.resultId
+        : `${lesson.id}:${Number.isFinite(score) ? score : 0}:${completed}`;
+
+      if (appliedSimulationResultsRef.current.has(resultId)) {
+        return;
+      }
+
+      const safeResult: UnitySessionResult = {
+        score: Number.isFinite(score) ? score : 0,
+        completed,
+        resultId,
+      };
+
+      appliedSimulationResultsRef.current.add(resultId);
+      setSimulationResult(safeResult);
+      updateScore(safeResult.score, lesson.title);
+
+      if (safeResult.completed) {
+        markLessonComplete(lesson.id, lesson.title);
+      }
+    };
+
+    window.reportUnitySessionResult = applySimulationResult;
+    setUnityBridgeReady(true);
 
     const handleSimulationMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) {
@@ -85,26 +156,21 @@ const LessonView = () => {
         return;
       }
 
-      if (data.lessonId && data.lessonId !== lesson.id) {
+      if (typeof data.payload === 'string') {
+        applySimulationResult(data.payload);
         return;
       }
 
-      const score = Number(data.score) || 0;
-      const resultKey = String(data.resultId || `${lesson.id}:${score}:${Boolean(data.completed)}`);
-      if (appliedSimulationResultsRef.current.has(resultKey)) {
-        return;
-      }
-
-      appliedSimulationResultsRef.current.add(resultKey);
-      updateScore(score);
-
-      if (data.completed) {
-        markLessonComplete(lesson.id);
-      }
+      applySimulationResult(JSON.stringify(data.payload ?? data));
     };
 
     window.addEventListener('message', handleSimulationMessage);
-    return () => window.removeEventListener('message', handleSimulationMessage);
+
+    return () => {
+      window.removeEventListener('message', handleSimulationMessage);
+      delete window.reportUnitySessionResult;
+      setUnityBridgeReady(false);
+    };
   }, [lesson, markLessonComplete, updateScore]);
 
   if (!lesson) {
@@ -121,7 +187,7 @@ const LessonView = () => {
   const handleBack = () => navigate('/dashboard');
   
   const handleComplete = () => {
-    if (lesson) markLessonComplete(lesson.id);
+    if (lesson) markLessonComplete(lesson.id, lesson.title);
     navigate('/dashboard');
   };
 
@@ -388,14 +454,30 @@ const LessonView = () => {
         return (
            <div className="fixed inset-0 z-[60] bg-gray-900 overflow-hidden">
              {/* Full Screen Iframe */}
-             <iframe 
-               ref={simulationFrameRef}
-               src={`/Latest%20Game%20file/index.html?lessonId=${encodeURIComponent(lesson.id)}`} 
-               className="absolute inset-0 w-full h-full border-none"
-               title="Unity Simulation"
-               allow="autoplay; fullscreen; keyboard"
-               tabIndex={0}
-             />
+             {unityBridgeReady && (
+               <iframe
+                 ref={simulationFrameRef}
+                 src={`/Latest%20Game%20file/index.html?lessonId=${encodeURIComponent(lesson.id)}`}
+                 className="absolute inset-0 w-full h-full border-none"
+                 title="Unity Simulation"
+                 allow="autoplay; fullscreen; keyboard"
+                 tabIndex={0}
+               />
+             )}
+
+             {simulationResult && (
+               <motion.div
+                 initial={{ y: 20, opacity: 0 }}
+                 animate={{ y: 0, opacity: 1 }}
+                 className="absolute left-6 bottom-6 z-10 max-w-sm rounded-2xl border border-blue-400/40 bg-gray-950/90 p-5 text-white shadow-2xl backdrop-blur"
+               >
+                 <p className="text-xs font-bold uppercase tracking-widest text-blue-300">Simulation Result</p>
+                 <p className="mt-2 text-4xl font-black text-white">{simulationResult.score}</p>
+                 <p className="mt-1 text-sm text-gray-300">
+                   {simulationResult.completed ? 'Completed successfully' : 'Simulation ended'}
+                 </p>
+               </motion.div>
+             )}
 
              <div className="absolute bottom-8 right-8 z-10">
                <motion.button 

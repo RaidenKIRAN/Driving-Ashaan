@@ -10,6 +10,7 @@ export interface User {
   completedLessons: string[];
   points: number;
   lastScore: number;
+  lastSession: string;
   badges: number;
 }
 
@@ -25,11 +26,12 @@ interface UserContextType {
   completedLessons: string[]; // Keep for backward compatibility/easy access
   points: number;
   lastScore: number;
+  lastSession: string;
   badges: number;
   setName: (name: string) => void; // Keep for compatibility
   setLevel: (level: Level) => void; // Keep for compatibility
-  markLessonComplete: (lessonId: string) => void;
-  updateScore: (score: number) => void;
+  markLessonComplete: (lessonId: string, sessionTitle?: string) => void;
+  updateScore: (score: number, sessionTitle?: string) => void;
   signUp: (username: string, password: string, level: Level) => void;
   login: (username: string, password: string) => LoginResult;
   logout: () => void;
@@ -96,6 +98,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       completedLessons: [],
       points: 0,
       lastScore: 0,
+      lastSession: 'No sessions yet',
       badges: 0
     };
 
@@ -120,11 +123,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       return { success: false, error: "incorrect password" };
     }
 
-    // Reset points and migrate existing users
+    // Migrate existing users without losing their progress.
     const migratedUser = {
       ...targetUser,
-      points: 0,
+      completedLessons: targetUser.completedLessons || [],
+      points: targetUser.points || 0,
       lastScore: targetUser.lastScore || 0,
+      lastSession: targetUser.lastSession || 'No sessions yet',
       badges: targetUser.badges || 0
     };
 
@@ -136,16 +141,30 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
   };
 
-  const markLessonComplete = (lessonId: string) => {
+  const markLessonComplete = (lessonId: string, sessionTitle?: string) => {
     if (!user) return;
     
     setUser(prev => {
       if (!prev) return null;
-      if (prev.completedLessons.includes(lessonId)) return prev;
+      if (prev.completedLessons.includes(lessonId)) {
+        if (!sessionTitle || prev.lastSession === sessionTitle) return prev;
+
+        const updatedUser = {
+          ...prev,
+          lastSession: sessionTitle
+        };
+
+        const users = JSON.parse(localStorage.getItem('users') || '{}');
+        users[prev.username] = updatedUser;
+        localStorage.setItem('users', JSON.stringify(users));
+
+        return updatedUser;
+      }
       
       const updatedUser = {
         ...prev,
         completedLessons: [...prev.completedLessons, lessonId],
+        lastSession: sessionTitle || prev.lastSession || 'No sessions yet',
         badges: Math.floor(((prev.completedLessons?.length || 0) + 1) / 3)
       };
       
@@ -158,16 +177,18 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const updateScore = (score: number) => {
-    if (!user) return;
+  const updateScore = (score: number, sessionTitle?: string) => {
+    const safeScore = Number.isFinite(score) ? Math.max(0, Math.round(score)) : 0;
+
     setUser(prev => {
       if (!prev) return null;
       
       // Accumulate points and update lastScore
       const updatedUser = {
         ...prev,
-        lastScore: score,
-        points: (prev.points || 0) + score
+        lastScore: safeScore,
+        lastSession: sessionTitle || prev.lastSession || 'No sessions yet',
+        points: (prev.points || 0) + safeScore
       };
       
       const users = JSON.parse(localStorage.getItem('users') || '{}');
@@ -189,23 +210,20 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const setLevel = (level: Level) => {
     if (user) {
-      const updatedUser = { ...user, level };
-      setUser(updatedUser);
-       // Update in localStorage users list
-       const users = JSON.parse(localStorage.getItem('users') || '{}');
-       users[user.username] = updatedUser;
-       localStorage.setItem('users', JSON.stringify(users));
+      setUser(prev => {
+        if (!prev) return null;
+
+        const updatedUser = { ...prev, level };
+        const users = JSON.parse(localStorage.getItem('users') || '{}');
+        users[prev.username] = updatedUser;
+        localStorage.setItem('users', JSON.stringify(users));
+
+        return updatedUser;
+      });
     } else {
       setTempLevel(level);
     }
   };
-
-  // Add a one-time fix for the current user session
-  useEffect(() => {
-    if (user && user.points > 1000) { // Arbitrary "big figure" check
-      setUser(prev => prev ? { ...prev, points: 0 } : null);
-    }
-  }, []);
 
   return (
     <UserContext.Provider value={{ 
@@ -215,6 +233,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       completedLessons: user ? user.completedLessons : [],
       points: user ? user.points : 0,
       lastScore: user ? user.lastScore : 0,
+      lastSession: user ? user.lastSession : 'No sessions yet',
       badges: user ? user.badges : 0,
       setName, 
       setLevel, 

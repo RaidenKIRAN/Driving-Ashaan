@@ -10,7 +10,8 @@ import { ProfileMenu } from '../components/ProfileMenu';
 
 const CountUpCount = ({ value }: { value: number | string }) => {
   const [count, setCount] = useState(0);
-  const numValue = typeof value === 'string' ? parseInt(value.replace(/[^0-9]/g, ''), 10) : value;
+  const isNumericStat = typeof value === 'number' || /^\d+(\s*pts)?$/.test(value);
+  const numValue = isNumericStat ? (typeof value === 'string' ? parseInt(value.replace(/[^0-9]/g, ''), 10) : value) : NaN;
   
   useEffect(() => {
     if (isNaN(numValue)) return;
@@ -48,7 +49,7 @@ const itemVariants: Variants = {
 };
 
 const Dashboard = () => {
-  const { name, level, completedLessons, points, lastScore, badges } = useUser();
+  const { name, level, completedLessons, points, lastSession, badges } = useUser();
   const location = useLocation();
   const isNewSignup = location.state?.isNewSignup;
 
@@ -84,7 +85,7 @@ const Dashboard = () => {
 
   const stats = [
     { label: 'Total Points', value: points, icon: Trophy, color: 'from-blue-600 to-blue-400', shadow: 'shadow-blue-500/20' },
-    { label: 'Last Session', value: `${lastScore} pts`, icon: TrendingUp, color: 'from-emerald-600 to-emerald-400', shadow: 'shadow-emerald-500/20' },
+    { label: 'Last Session', value: lastSession, icon: TrendingUp, color: 'from-emerald-600 to-emerald-400', shadow: 'shadow-emerald-500/20' },
     { label: 'Badges', value: badges, icon: Medal, color: 'from-purple-600 to-purple-400', shadow: 'shadow-purple-500/20' },
   ];
 
