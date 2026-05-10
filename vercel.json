@@ -1,7 +1,7 @@
 {
   "headers": [
     {
-      "source": "/Latest Game file/Build/(.*).data.br",
+      "source": "/(.*).data.br",
       "headers": [
         {
           "key": "Content-Encoding",
@@ -14,7 +14,7 @@
       ]
     },
     {
-      "source": "/Latest Game file/Build/(.*).framework.js.br",
+      "source": "/(.*).framework.js.br",
       "headers": [
         {
           "key": "Content-Encoding",
@@ -27,7 +27,7 @@
       ]
     },
     {
-      "source": "/Latest Game file/Build/(.*).wasm.br",
+      "source": "/(.*).wasm.br",
       "headers": [
         {
           "key": "Content-Encoding",
